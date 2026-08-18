@@ -1,0 +1,27 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    START(["Campaign start"])
+    R1["<b>Round 1 · baseline</b><br/>collect → judge → export"]
+    G1{"<b>Gate</b> — enough failures?<br/>judge agreement ≥ floor?"}
+    R2["<b>Round 2 · distill</b><br/>distill → evaluate → register → collect → judge"]
+    G2{"<b>Gate</b> — no regression on held-out?<br/>failure rate improved?"}
+    R3["<b>Round 3 · route</b><br/>finetune → evaluate → shadow the classifier"]
+    G3{"<b>Gate</b> — escalation recall ≥ floor?<br/>cost saving ≥ floor? shadow window clean?"}
+    MODE{"promotion mode"}
+    HUMAN["Await human approval"]
+    PROM(["<b>Promote to enforce</b><br/>the student becomes the new baseline for the next round"])
+    STOP["<b>Stop</b> — report which observation missed which threshold.<br/>No artifact is registered, no config is generated,<br/>and production routing is unchanged."]
+
+    START --> R1 --> G1
+    G1 -->|"pass"| R2 --> G2
+    G2 -->|"pass"| R3 --> G3
+    G3 -->|"pass"| MODE
+    MODE -->|"manual · default"| HUMAN --> PROM
+    MODE -->|"auto · opt-in"| PROM
+
+    G1 -->|"miss"| STOP
+    G2 -->|"miss"| STOP
+    G3 -->|"miss"| STOP

@@ -1,0 +1,26 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    T(["<b>Agent traffic</b> — production requests, or an eval corpus for bootstrap"])
+
+    subgraph LEARN["LEARN — close the capability gap"]
+        S["<b>1 · Shadow</b><br/>teacher serves the client; the student mirrors and its output is discarded"]
+        J["<b>2 · Judge</b><br/>score the student against the teacher; one verdict per shadow arm"]
+        D["<b>3 · Distill</b><br/>SFT / LoRA on teacher outputs, for exactly the cases the student failed"]
+        S -->|"prompt + both responses + routing signals"| J
+        J -->|"the cases the student failed"| D
+    end
+
+    subgraph ROUTEG["ROUTE — close the routing gap"]
+        RS["<b>4 · Re-shadow</b><br/>the distilled student mirrors the teacher over the same distribution"]
+        F["<b>5 · Fine-tune the router</b><br/>an escalation classifier learns what the student still cannot handle"]
+        P["<b>6 · Promote</b><br/>the student serves the domain; the teacher handles only the escalated tail"]
+        RS -->|"residual failures"| F
+        F -->|"generated decision rules"| P
+    end
+
+    T --> S
+    D ==>|"distilled student"| RS
+    P -.->|"the student becomes the new baseline; the teacher gap shrinks each round"| S

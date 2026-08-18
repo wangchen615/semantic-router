@@ -273,6 +273,7 @@ const sidebars: SidebarsConfig = {
         'proposals/agentic-rag',
         'proposals/agentic-memory',
         'proposals/Prism-153key',
+        'proposals/model-flywheel-distillation-and-router-finetuning',
       ],
     },
     {

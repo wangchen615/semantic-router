@@ -1,0 +1,50 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    subgraph D1["DATA PATH · round 1 — the teacher serves, the base student shadows"]
+        REQ(["Agent request"])
+        ROUTE["<b>vSR routing</b> — <i>unchanged</i> — signals → decision → modelRefs"]
+        PRIM["Primary arm — <b>teacher</b>"]
+        SHAD1["Shadow arm — <b>base student</b> — <i>response discarded</i>"]
+        CLIENT(["Client response"])
+        REC1["<b>Replay record</b> — shadow_arms + Signal + UsageCost"]
+        REQ --> ROUTE
+        ROUTE --> PRIM
+        ROUTE -.->|"sampled, async, never awaited"| SHAD1
+        PRIM --> CLIENT
+        PRIM --> REC1
+        SHAD1 --> REC1
+    end
+
+    subgraph C1["CONTROL PLANE · pass 1 — make the student more capable"]
+        J1["<b>Judge job</b> — llm_judge · signal · eval_harness · webhook → Outcome records"]
+        DS1["<b>Dataset revision</b> — the cases the <i>base</i> student failed"]
+        DIST["<b>Distill job</b> — SFT / LoRA on teacher outputs → distilled model artifact"]
+        REGM["Register the distilled model as a backend <b>and as the new shadow arm</b>"]
+        J1 --> DS1 --> DIST --> REGM
+    end
+
+    subgraph D2["DATA PATH · round 2 — the same machinery, with the distilled student shadowing"]
+        SHAD2["Shadow arm — <b>distilled student</b> — <i>response discarded</i>"]
+        REC2["<b>Replay record</b> — round 2 captures over the same prompt distribution"]
+        SHAD2 --> REC2
+    end
+
+    subgraph C2["CONTROL PLANE · pass 2 — teach the router where that capability ends"]
+        J2["<b>Judge job</b> — the same strategies, now scoring the distilled arm"]
+        DS2["<b>Dataset revision</b> — what the <i>distilled</i> student still cannot do"]
+        FT["<b>Router fine-tune job</b> → escalation classifier"]
+        REGC["Register the classifier and generate decision rules"]
+        J2 --> DS2 --> FT --> REGC
+    end
+
+    CTRL["<b>Campaign controller</b> — gates each pass · <i>promotion: manual or auto</i>"]
+    OUT["<b>Proposed config</b>, through the existing reviewed deploy path — the only edge back into routing"]
+
+    REC1 ==>|"round 1 captures"| J1
+    REGM ==>|"<b>re-shadow</b> — the distilled model takes the shadow arm, and round 2 begins"| SHAD2
+    REC2 ==>|"round 2 captures"| J2
+    REGM -.-> CTRL
+    REGC --> CTRL --> OUT
